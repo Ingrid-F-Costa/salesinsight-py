@@ -162,3 +162,54 @@ df_final = criar_colunas_derivadas(df_limpo)
 print(df_final[["data_venda", "quantidade", "preco_unitario", "receita_total",
                 "mes", "mes_nome", "trimestre", "ano", "faixa_receita_item"]].head())
 print(df_final["faixa_receita_item"].value_counts())
+
+def calcular_metricas(df):
+    """
+    Calcula as metricas agregadas do dataset.
+    Retorna um dicionario no formato {nome_da_metrica: DataFrame}.
+    """
+    metricas = {}
+
+    # receita, quantidade e numero de vendas por mes
+    metricas["por_mes"] = (
+        df.groupby("mes")
+        .agg(receita_total=("receita_total", "sum"),
+             quantidade=("quantidade", "sum"),
+             n_vendas=("id_venda", "count"))
+        .reset_index()
+    )
+
+    # top 5 produtos por receita
+    metricas["top_produtos"] = (
+        df.groupby("produto")["receita_total"].sum()
+        .sort_values(ascending=False)
+        .head(5)
+        .reset_index()
+    )
+
+    # receita por categoria
+    metricas["por_categoria"] = (
+        df.groupby("categoria")["receita_total"].sum()
+        .sort_values(ascending=False)
+        .reset_index()
+    )
+
+    # receita total e ticket medio por regiao
+    metricas["por_regiao"] = (
+        df.groupby("regiao")
+        .agg(receita_total=("receita_total", "sum"),
+             ticket_medio=("receita_total", "mean"))
+        .sort_values("receita_total", ascending=False)
+        .reset_index()
+    )
+
+    # exibir no console
+    for nome, tabela in metricas.items():
+        print(f"\n=== {nome.upper().replace('_', ' ')} ===")
+        print(tabela.round(2).to_string(index=False))
+
+    return metricas
+
+
+# Usar a funcao no dataset com as colunas derivadas
+metricas = calcular_metricas(df_final)
