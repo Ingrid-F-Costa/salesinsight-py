@@ -374,3 +374,45 @@ df_final = processar_coluna(df_final, "quantidade",
 
 print(df_final[["quantidade", "perfil_volume", "receita_total", "receita_em_milhares"]].head())
 print(df_final["perfil_volume"].value_counts())
+
+import json
+import os
+
+
+def calcular_estatisticas_gerais(df):
+    """Calcula estatisticas gerais simples do dataset (somas, contagens e medias)."""
+    return {
+        "receita_total": df["receita_total"].sum(),
+        "quantidade_total": df["quantidade"].sum(),
+        "numero_de_vendas": len(df),
+        "numero_de_clientes": df["cliente"].nunique(),
+        "ticket_medio": df["receita_total"].mean(),
+    }
+
+
+def exportar_resultados(metricas, clientes, estatisticas):
+    """Exporta os resultados do projeto em CSV e JSON."""
+    os.makedirs("outputs", exist_ok=True)
+
+    metricas["por_mes"].to_csv("outputs/metricas_por_mes.csv",
+                               index=False, encoding="utf-8-sig")
+    clientes.to_csv("outputs/segmentacao_clientes.csv",
+                    index=False, encoding="utf-8-sig")
+
+    serializavel = {k: round(float(v), 2)
+                    for k, v in estatisticas.items()}
+    caminho = "outputs/estatisticas_gerais.json"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(serializavel, f, indent=4, ensure_ascii=False)
+
+    # leitura de volta para confirmar a escrita
+    with open(caminho, "r", encoding="utf-8") as f:
+        conferencia = json.load(f)
+    print(f"JSON gravado e lido: {conferencia}")
+
+    return conferencia
+
+
+# Usar as funcoes
+estatisticas = calcular_estatisticas_gerais(df_final)
+exportar_resultados(metricas, segmentacao, estatisticas)
