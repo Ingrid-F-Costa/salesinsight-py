@@ -126,3 +126,39 @@ def tratar_dados(df):
 # Usar a funcao no dataset lido do CSV
 df_limpo, relatorio = tratar_dados(df)
 print(df_limpo.dtypes)
+
+MESES_PT = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+            5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+            9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
+
+
+def criar_colunas_derivadas(df):
+    """Cria colunas derivadas a partir do dataset limpo."""
+    df = df.copy()
+
+    # receita da linha (operacao vetorizada)
+    df["receita_total"] = df["quantidade"] * df["preco_unitario"]
+
+    # componentes da data
+    df["mes"] = df["data_venda"].dt.month
+    df["mes_nome"] = df["mes"].map(MESES_PT)
+    df["trimestre"] = "Q" + df["data_venda"].dt.quarter.astype(str)
+    df["ano"] = df["data_venda"].dt.year
+
+    # faixa de valor da linha (transformacao condicional com np.select)
+    condicoes = [
+        df["receita_total"] < 500,
+        (df["receita_total"] >= 500) & (df["receita_total"] < 5000),
+        df["receita_total"] >= 5000,
+    ]
+    faixas = ["Baixo Valor", "Medio Valor", "Alto Valor"]
+    df["faixa_receita_item"] = np.select(condicoes, faixas, default="Nao Classificado")
+
+    return df
+
+
+# Usar a funcao no dataset limpo
+df_final = criar_colunas_derivadas(df_limpo)
+print(df_final[["data_venda", "quantidade", "preco_unitario", "receita_total",
+                "mes", "mes_nome", "trimestre", "ano", "faixa_receita_item"]].head())
+print(df_final["faixa_receita_item"].value_counts())
