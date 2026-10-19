@@ -213,3 +213,35 @@ def calcular_metricas(df):
 
 # Usar a funcao no dataset com as colunas derivadas
 metricas = calcular_metricas(df_final)
+
+def segmentar_clientes(df):
+    """
+    Agrupa por cliente, soma a receita e classifica em
+    Bronze / Prata / Ouro.
+    Retorna um DataFrame com: cliente, total_gasto, segmento.
+    """
+    clientes = (
+        df.groupby("cliente")["receita_total"].sum()
+        .reset_index()
+        .rename(columns={"receita_total": "total_gasto"})
+        .sort_values("total_gasto", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    # funcao lambda aplicada com .apply()
+    clientes["segmento"] = clientes["total_gasto"].apply(
+        lambda gasto: "Bronze" if gasto < 5000
+        else ("Prata" if gasto <= 15000 else "Ouro")
+    )
+
+    print("\n=== TOP 10 CLIENTES ===")
+    print(clientes.head(10).round(2).to_string(index=False))
+
+    print("\n=== DISTRIBUICAO POR SEGMENTO ===")
+    print(clientes["segmento"].value_counts())
+
+    return clientes
+
+
+# Usar a funcao no dataset com as colunas derivadas
+segmentacao = segmentar_clientes(df_final)
