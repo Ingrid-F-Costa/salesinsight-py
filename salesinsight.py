@@ -352,3 +352,25 @@ def gerar_graficos(df, metricas, pasta="outputs/graficos", mostrar=False):
 
 # mostrar=True exibe os graficos aqui no Colab
 gerar_graficos(df_final, metricas, mostrar=True)
+
+def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
+    """
+    Aplica uma funcao de transformacao a uma coluna do DataFrame.
+    Demonstra o uso de funcoes como argumento (funcao de ordem superior).
+    """
+    df = df.copy()
+    nome_saida = nome_saida or f"{coluna}_transformado"
+    df[nome_saida] = df[coluna].apply(funcao_transformacao)
+    return df
+
+
+# uso com funcoes lambda em contextos distintos
+df_final = processar_coluna(df_final, "receita_total",
+                            lambda x: round(x / 1000, 2),
+                            nome_saida="receita_em_milhares")
+df_final = processar_coluna(df_final, "quantidade",
+                            lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+                            nome_saida="perfil_volume")
+
+print(df_final[["quantidade", "perfil_volume", "receita_total", "receita_em_milhares"]].head())
+print(df_final["perfil_volume"].value_counts())
