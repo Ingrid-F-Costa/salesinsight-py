@@ -245,3 +245,110 @@ def segmentar_clientes(df):
 
 # Usar a funcao no dataset com as colunas derivadas
 segmentacao = segmentar_clientes(df_final)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+CORES_CATEGORIA = {"Computadores": "#1f4e79", "Celulares": "#e07b39", "Periféricos": "#2a9d8f"}
+
+
+def gerar_graficos(df, metricas, pasta="outputs/graficos", mostrar=False):
+    """Gera as 4 figuras do projeto e salva em PNG."""
+    os.makedirs(pasta, exist_ok=True)
+    sns.set_theme(style="whitegrid")
+    plt.rcParams["axes.titlesize"] = 14
+
+    por_mes = metricas["por_mes"]
+    top_produtos = metricas["top_produtos"]
+    por_regiao = metricas["por_regiao"]
+
+    # --- 1. linha: receita por mes ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(por_mes["mes"], por_mes["receita_total"],
+            marker="o", linewidth=2, color="#1f4e79", label="Receita total")
+    ax.set_title("Receita Total por Mes")
+    ax.set_xlabel("Mes")
+    ax.set_ylabel("Receita Total (R$)")
+    ax.set_xticks(range(1, 13))
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(f"{pasta}/receita_por_mes.png", dpi=150)
+    if mostrar:
+        plt.show()
+    plt.close()
+
+    # --- 2. barras: top 5 produtos ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.barplot(data=top_produtos, y="produto", x="receita_total",
+                hue="produto", legend=False, palette="Blues_d", ax=ax)
+    ax.set_title("Top 5 Produtos por Receita")
+    ax.set_xlabel("Receita Total (R$)")
+    ax.set_ylabel("Produto")
+    plt.tight_layout()
+    plt.savefig(f"{pasta}/top_produtos.png", dpi=150)
+    if mostrar:
+        plt.show()
+    plt.close()
+
+    # --- 3. dispersao: quantidade x receita, colorido por categoria ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for categoria, cor in CORES_CATEGORIA.items():
+        parte = df[df["categoria"] == categoria]
+        ax.scatter(parte["quantidade"], parte["receita_total"],
+                   color=cor, alpha=0.7, label=categoria)
+    ax.set_title("Quantidade Vendida x Receita por Transacao")
+    ax.set_xlabel("Quantidade")
+    ax.set_ylabel("Receita da Transacao (R$)")
+    ax.legend(title="Categoria")
+    plt.tight_layout()
+    plt.savefig(f"{pasta}/quantidade_vs_receita.png", dpi=150)
+    if mostrar:
+        plt.show()
+    plt.close()
+
+    # --- 4. painel 2x2 ---
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+
+    axes[0, 0].plot(por_mes["mes"], por_mes["receita_total"],
+                    marker="o", linewidth=2, color="#1f4e79", label="Receita total")
+    axes[0, 0].set_title("Receita por Mes")
+    axes[0, 0].set_xlabel("Mes")
+    axes[0, 0].set_ylabel("Receita (R$)")
+    axes[0, 0].legend()
+
+    axes[0, 1].bar(top_produtos["produto"], top_produtos["receita_total"],
+                   color="#2a9d8f")
+    axes[0, 1].set_title("Top 5 Produtos")
+    axes[0, 1].set_xlabel("Produto")
+    axes[0, 1].set_ylabel("Receita (R$)")
+    axes[0, 1].tick_params(axis="x", rotation=30)
+
+    for categoria, cor in CORES_CATEGORIA.items():
+        parte = df[df["categoria"] == categoria]
+        axes[1, 0].scatter(parte["quantidade"], parte["receita_total"],
+                           color=cor, alpha=0.7, label=categoria)
+    axes[1, 0].set_title("Quantidade x Receita")
+    axes[1, 0].set_xlabel("Quantidade")
+    axes[1, 0].set_ylabel("Receita (R$)")
+    axes[1, 0].legend(title="Categoria")
+
+    axes[1, 1].bar(por_regiao["regiao"], por_regiao["receita_total"],
+                   color="#e07b39")
+    axes[1, 1].set_title("Receita por Regiao")
+    axes[1, 1].set_xlabel("Regiao")
+    axes[1, 1].set_ylabel("Receita (R$)")
+    axes[1, 1].tick_params(axis="x", rotation=30)
+
+    fig.suptitle("SalesInsight PY - Painel Resumo", fontsize=16)
+    plt.tight_layout()
+    plt.savefig(f"{pasta}/painel_resumo.png", dpi=150)
+    if mostrar:
+        plt.show()
+    plt.close()
+
+    print(f"4 graficos salvos em {pasta}/")
+
+
+# mostrar=True exibe os graficos aqui no Colab
+gerar_graficos(df_final, metricas, mostrar=True)
