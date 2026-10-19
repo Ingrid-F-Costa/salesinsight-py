@@ -1,11 +1,35 @@
-# SalesInsight PY - Analise e Visualizacao de Dados de Vendas
-import pandas as pd
-import numpy as np
+"""SalesInsight PY - Analise e Visualizacao de Dados de Vendas com Python."""
+
+import json
+import os
 import random
+import sys
 from datetime import datetime, timedelta
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+# ---------------------------------------------------------------
+# Constantes
+# ---------------------------------------------------------------
+MESES_PT = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+            5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+            9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
+
+CORES_CATEGORIA = {"Computadores": "#1f4e79", "Celulares": "#e07b39",
+                   "Periféricos": "#2a9d8f"}
+
+# No Google Colab os graficos aparecem na tela; no terminal so sao salvos
+EM_COLAB = "google.colab" in sys.modules
+
+
+# ---------------------------------------------------------------
+# RF01 - Gerar o dataset de vendas
+# ---------------------------------------------------------------
 def gerar_dataset_vendas(n_registros=200, seed=42):
-    """Gera um dataset sintético de vendas com dados sujos."""
+    """Gera um dataset sintetico de vendas com dados sujos."""
     random.seed(seed)
     np.random.seed(seed)
 
@@ -49,12 +73,10 @@ def gerar_dataset_vendas(n_registros=200, seed=42):
 
     return pd.DataFrame(dados)
 
-# Gerar e salvar o CSV bruto
-df_bruto = gerar_dataset_vendas()
-df_bruto.to_csv("vendas.csv", index=False)
-print(f"Dataset gerado com {len(df_bruto)} registros.")
-print(df_bruto.head())
 
+# ---------------------------------------------------------------
+# RF02 - Inspecionar os dados
+# ---------------------------------------------------------------
 def inspecionar_dados(df):
     """Exibe as informacoes estruturais do DataFrame."""
     print("\n=== INSPECAO INICIAL DO DATASET ===")
@@ -65,10 +87,10 @@ def inspecionar_dados(df):
     print(f"\nPrimeiros registros:\n{df.head()}")
     return df
 
-# Carregar o CSV que foi salvo no RF01 e inspecionar
-df = pd.read_csv("vendas.csv")
-inspecionar_dados(df)
 
+# ---------------------------------------------------------------
+# RF03 - Tratar os dados (datetime)
+# ---------------------------------------------------------------
 def tratar_dados(df):
     """
     Trata o DataFrame de vendas.
@@ -123,15 +145,9 @@ def tratar_dados(df):
     return df, relatorio
 
 
-# Usar a funcao no dataset lido do CSV
-df_limpo, relatorio = tratar_dados(df)
-print(df_limpo.dtypes)
-
-MESES_PT = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
-            5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
-            9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
-
-
+# ---------------------------------------------------------------
+# RF04 - Colunas derivadas
+# ---------------------------------------------------------------
 def criar_colunas_derivadas(df):
     """Cria colunas derivadas a partir do dataset limpo."""
     df = df.copy()
@@ -152,17 +168,29 @@ def criar_colunas_derivadas(df):
         df["receita_total"] >= 5000,
     ]
     faixas = ["Baixo Valor", "Medio Valor", "Alto Valor"]
-    df["faixa_receita_item"] = np.select(condicoes, faixas, default="Nao Classificado")
+    df["faixa_receita_item"] = np.select(condicoes, faixas,
+                                         default="Nao Classificado")
 
     return df
 
 
-# Usar a funcao no dataset limpo
-df_final = criar_colunas_derivadas(df_limpo)
-print(df_final[["data_venda", "quantidade", "preco_unitario", "receita_total",
-                "mes", "mes_nome", "trimestre", "ano", "faixa_receita_item"]].head())
-print(df_final["faixa_receita_item"].value_counts())
+# ---------------------------------------------------------------
+# RF08 - Funcao de ordem superior
+# ---------------------------------------------------------------
+def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
+    """
+    Aplica uma funcao de transformacao a uma coluna do DataFrame.
+    Demonstra o uso de funcoes como argumento (funcao de ordem superior).
+    """
+    df = df.copy()
+    nome_saida = nome_saida or f"{coluna}_transformado"
+    df[nome_saida] = df[coluna].apply(funcao_transformacao)
+    return df
 
+
+# ---------------------------------------------------------------
+# RF05 - Metricas agregadas
+# ---------------------------------------------------------------
 def calcular_metricas(df):
     """
     Calcula as metricas agregadas do dataset.
@@ -211,9 +239,9 @@ def calcular_metricas(df):
     return metricas
 
 
-# Usar a funcao no dataset com as colunas derivadas
-metricas = calcular_metricas(df_final)
-
+# ---------------------------------------------------------------
+# RF06 - Segmentacao de clientes
+# ---------------------------------------------------------------
 def segmentar_clientes(df):
     """
     Agrupa por cliente, soma a receita e classifica em
@@ -243,16 +271,9 @@ def segmentar_clientes(df):
     return clientes
 
 
-# Usar a funcao no dataset com as colunas derivadas
-segmentacao = segmentar_clientes(df_final)
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-import os
-
-CORES_CATEGORIA = {"Computadores": "#1f4e79", "Celulares": "#e07b39", "Periféricos": "#2a9d8f"}
-
-
+# ---------------------------------------------------------------
+# RF07 - Visualizacoes
+# ---------------------------------------------------------------
 def gerar_graficos(df, metricas, pasta="outputs/graficos", mostrar=False):
     """Gera as 4 figuras do projeto e salva em PNG."""
     os.makedirs(pasta, exist_ok=True)
@@ -311,7 +332,8 @@ def gerar_graficos(df, metricas, pasta="outputs/graficos", mostrar=False):
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
 
     axes[0, 0].plot(por_mes["mes"], por_mes["receita_total"],
-                    marker="o", linewidth=2, color="#1f4e79", label="Receita total")
+                    marker="o", linewidth=2, color="#1f4e79",
+                    label="Receita total")
     axes[0, 0].set_title("Receita por Mes")
     axes[0, 0].set_xlabel("Mes")
     axes[0, 0].set_ylabel("Receita (R$)")
@@ -347,38 +369,12 @@ def gerar_graficos(df, metricas, pasta="outputs/graficos", mostrar=False):
         plt.show()
     plt.close()
 
-    print(f"4 graficos salvos em {pasta}/")
+    print(f"\n4 graficos salvos em {pasta}/")
 
 
-# mostrar=True exibe os graficos aqui no Colab
-gerar_graficos(df_final, metricas, mostrar=True)
-
-def processar_coluna(df, coluna, funcao_transformacao, nome_saida=None):
-    """
-    Aplica uma funcao de transformacao a uma coluna do DataFrame.
-    Demonstra o uso de funcoes como argumento (funcao de ordem superior).
-    """
-    df = df.copy()
-    nome_saida = nome_saida or f"{coluna}_transformado"
-    df[nome_saida] = df[coluna].apply(funcao_transformacao)
-    return df
-
-
-# uso com funcoes lambda em contextos distintos
-df_final = processar_coluna(df_final, "receita_total",
-                            lambda x: round(x / 1000, 2),
-                            nome_saida="receita_em_milhares")
-df_final = processar_coluna(df_final, "quantidade",
-                            lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
-                            nome_saida="perfil_volume")
-
-print(df_final[["quantidade", "perfil_volume", "receita_total", "receita_em_milhares"]].head())
-print(df_final["perfil_volume"].value_counts())
-
-import json
-import os
-
-
+# ---------------------------------------------------------------
+# RF09 - Exportacao de resultados
+# ---------------------------------------------------------------
 def calcular_estatisticas_gerais(df):
     """Calcula estatisticas gerais simples do dataset (somas, contagens e medias)."""
     return {
@@ -408,11 +404,81 @@ def exportar_resultados(metricas, clientes, estatisticas):
     # leitura de volta para confirmar a escrita
     with open(caminho, "r", encoding="utf-8") as f:
         conferencia = json.load(f)
-    print(f"JSON gravado e lido: {conferencia}")
+    print(f"\nJSON gravado e lido: {conferencia}")
 
     return conferencia
 
 
-# Usar as funcoes
-estatisticas = calcular_estatisticas_gerais(df_final)
-exportar_resultados(metricas, segmentacao, estatisticas)
+# ---------------------------------------------------------------
+# RF10 - Classe que organiza o fluxo e ponto de entrada
+# ---------------------------------------------------------------
+class AnalisadorDeVendas:
+    """Organiza o fluxo completo de analise de vendas, etapa por etapa."""
+
+    def __init__(self, mostrar_graficos=False):
+        self.mostrar_graficos = mostrar_graficos
+        self.df_bruto = None
+        self.df = None
+        self.relatorio_limpeza = None
+        self.metricas = None
+        self.clientes = None
+        self.estatisticas = None
+
+    def carregar(self, caminho):
+        """Le o CSV de vendas e guarda o DataFrame bruto."""
+        self.df_bruto = pd.read_csv(caminho)
+        return self.df_bruto
+
+    def transformar(self):
+        """Limpa os dados (datetime) e cria as colunas derivadas."""
+        self.df, self.relatorio_limpeza = tratar_dados(self.df_bruto)
+        self.df = criar_colunas_derivadas(self.df)
+        self.df = processar_coluna(self.df, "receita_total",
+                                   lambda x: round(x / 1000, 2),
+                                   nome_saida="receita_em_milhares")
+        self.df = processar_coluna(self.df, "quantidade",
+                                   lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+                                   nome_saida="perfil_volume")
+        return self.df
+
+    def analisar(self):
+        """Calcula as metricas agregadas e segmenta os clientes."""
+        self.metricas = calcular_metricas(self.df)
+        self.clientes = segmentar_clientes(self.df)
+
+    def visualizar(self):
+        """Gera e salva as quatro figuras."""
+        gerar_graficos(self.df, self.metricas, mostrar=self.mostrar_graficos)
+
+    def resumo(self):
+        """Calcula as estatisticas gerais e exporta os resultados."""
+        self.estatisticas = calcular_estatisticas_gerais(self.df)
+        exportar_resultados(self.metricas, self.clientes, self.estatisticas)
+
+
+def main():
+    """Executa o fluxo completo do SalesInsight PY."""
+    print("=" * 60)
+    print("   SALESINSIGHT PY - Analise de Dados de Vendas")
+    print("=" * 60)
+
+    analisador = AnalisadorDeVendas(mostrar_graficos=EM_COLAB)
+
+    # Etapa 0 - garantir a existencia do dataset
+    if not os.path.exists("vendas.csv"):
+        gerar_dataset_vendas().to_csv("vendas.csv", index=False)
+        print("Dataset gerado: vendas.csv")
+
+    # Etapas 1 a 6 - fluxo pela classe (limpeza sempre antes do resto)
+    analisador.carregar("vendas.csv")
+    inspecionar_dados(analisador.df_bruto)
+    analisador.transformar()
+    analisador.analisar()
+    analisador.visualizar()
+    analisador.resumo()
+
+    print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
+
+
+if __name__ == "__main__":
+    main()
